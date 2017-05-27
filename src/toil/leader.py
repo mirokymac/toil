@@ -160,6 +160,24 @@ class Leader:
         """
         # Start the stats/logging aggregation thread
         self.statsAndLogging.start()
+
+        #start mtail container
+        from toil.provisioners.aws import mtailConfig
+        import tempfile
+        import subprocess
+        mtailConfigFile = tempfile.mkstemp()
+        os.write(mtailConfigFile[0], mtailConfig)
+        mtailFdOut, mtailFdIn = os.pipe()
+        mtailIn = os.fdopen(mtailFdIn, "w")
+        mtailOut = os.fdopen(mtailFdOut, "r")
+        mtailProc = subprocess.Popen(["docker", "run",
+                                      "--interactive",
+                                      "-v", "%s:/home/toil.mtail" % mtailConfig,
+                                      "-p", "3903:3903",
+                                      "quay.io/sscaling/mtail",
+                                      "-progs", "/home/", "-logfds", "0"], stdin=mtailOut)
+        mtailHandler = logging.StreamHandler(stream=mtailIn)
+        logger.addHandler(mtailHandler)
         try:
 
             # Start service manager thread
@@ -187,6 +205,9 @@ class Leader:
         finally:
             # Ensure the stats and logging thread is properly shutdown
             self.statsAndLogging.shutdown()
+
+            mtailIn.close()
+            mtailOut.close()
 
         # Filter the failed jobs
         self.toilState.totalFailedJobs = filter(lambda j : self.jobStore.exists(j.jobStoreID), self.toilState.totalFailedJobs)
