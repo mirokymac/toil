@@ -18,7 +18,7 @@ Install Python ``virtualenv`` using pip_.
 ::
 
     $ sudo pip install virtualenv
-    
+
 .. _pip: https://pip.readthedocs.io/en/latest/installing/
 
 Create a virtual environment called ``venv`` in your home directory.
